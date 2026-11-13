@@ -133,8 +133,15 @@ export function StudioCanvas({
   const nearViewport = useNearViewport(wrapperRef, '500px');
   const caps = useMemo(() => detectGpuCapabilities(), []);
   const [contextLost, setContextLost] = useState(false);
+  const [hasActivated, setHasActivated] = useState(!lazyMount);
 
-  const shouldRenderCanvas = !lazyMount || nearViewport;
+  useEffect(() => {
+    if (nearViewport) {
+      setHasActivated(true);
+    }
+  }, [nearViewport]);
+
+  const effectiveFrameloop = lazyMount && !nearViewport ? 'never' : frameloop;
 
   // Enforce pan-y on mobile touch canvases so vertical scrolling never gets trapped
   useEffect(() => {
@@ -149,7 +156,7 @@ export function StudioCanvas({
     applyTouchAction();
     const timer = window.setTimeout(applyTouchAction, 120);
     return () => window.clearTimeout(timer);
-  }, [allowVerticalPageScroll, shouldRenderCanvas]);
+  }, [allowVerticalPageScroll, hasActivated]);
 
   if (!caps.webglAvailable || contextLost) {
     return (
@@ -172,11 +179,11 @@ export function StudioCanvas({
       className={`relative w-full h-full min-h-[200px] ${className}`}
       style={allowVerticalPageScroll ? { touchAction: 'pan-y' } : undefined}
     >
-      {shouldRenderCanvas ? (
+      {hasActivated ? (
         <Canvas
           shadows={!caps.isSoftwareGl}
           dpr={caps.maxPixelRatio}
-          frameloop={frameloop}
+          frameloop={effectiveFrameloop}
           resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
           camera={{ position: cameraPosition, fov, near: 0.1, far: 100 }}
           gl={{

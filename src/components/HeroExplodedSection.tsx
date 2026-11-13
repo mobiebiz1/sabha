@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Html, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -153,7 +153,56 @@ function TouchSafeOrbitControls({
   );
 }
 
+const _calloutWorldVec = new THREE.Vector3();
+
+function HeroCalloutProjector({
+  phoneGroupRef,
+  calloutRefs,
+  explosionFactor,
+  enabled,
+}: {
+  phoneGroupRef: React.RefObject<THREE.Group | null>;
+  calloutRefs: React.MutableRefObject<Partial<Record<IPhonePartId, HTMLButtonElement | null>>>;
+  explosionFactor: number;
+  enabled: boolean;
+}) {
+  const { camera, size } = useThree();
+
+  useFrame(() => {
+    if (!enabled) return;
+    const grp = phoneGroupRef.current;
+    if (!grp) return;
+    grp.updateWorldMatrix(true, false);
+
+    for (let i = 0; i < IPHONE_COMPONENTS.length; i++) {
+      const comp = IPHONE_COMPONENTS[i];
+      const btn = calloutRefs.current[comp.id];
+      if (!btn) continue;
+
+      const xOffset = comp.side === 'right' ? 1.24 : -1.24;
+      const yPos = comp.explodedY * explosionFactor;
+      _calloutWorldVec.set(xOffset, yPos, 0.08).applyMatrix4(grp.matrixWorld);
+      _calloutWorldVec.project(camera);
+
+      if (_calloutWorldVec.z > 1 || _calloutWorldVec.y < -0.94 || _calloutWorldVec.y > 0.94) {
+        btn.style.opacity = '0';
+        btn.style.pointerEvents = 'none';
+        continue;
+      }
+
+      const px = (_calloutWorldVec.x * 0.5 + 0.5) * size.width;
+      const py = (-_calloutWorldVec.y * 0.5 + 0.5) * size.height;
+      btn.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) translate(-50%, -50%)`;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    }
+  });
+
+  return null;
+}
+
 function CinematicHeroPhoneGroup({
+  groupRef,
   dropOffsetY,
   impactTiltX,
   impactTiltZ,
@@ -162,6 +211,7 @@ function CinematicHeroPhoneGroup({
   isDesktop,
   children,
 }: {
+  groupRef: React.RefObject<THREE.Group | null>;
   dropOffsetY: number;
   impactTiltX: number;
   impactTiltZ: number;
@@ -170,8 +220,6 @@ function CinematicHeroPhoneGroup({
   isDesktop: boolean;
   children: React.ReactNode;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
-
   useFrame(({ clock }, rawDelta) => {
     const grp = groupRef.current;
     if (!grp) return;
@@ -203,8 +251,9 @@ export function HeroExplodedSection({
   onExploreDevice,
   onDiagnoseDevice,
 }: HeroExplodedSectionProps) {
-  const pinSectionRef = useRef<HTMLDivElement>(null);
   const triggerTargetRef = useRef<HTMLDivElement>(null);
+  const phoneGroupRef = useRef<THREE.Group>(null);
+  const calloutRefs = useRef<Partial<Record<IPhonePartId, HTMLButtonElement | null>>>({});
   const userInteractingRef = useRef(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const caps = useMemo(() => detectGpuCapabilities(), []);
@@ -259,12 +308,11 @@ export function HeroExplodedSection({
     return () => cancelAnimationFrame(rafId);
   }, [caps.prefersReducedMotion, lowPower2DMode, introPlayCount]);
 
-  // ScrollTrigger: pinned on desktop, CSS-sticky + scrubbed on mobile/tablet so address bar resize never jitters
+  // ScrollTrigger scrubs scrollProgress cleanly while CSS position:sticky handles pinning without DOM reparenting
   useEffect(() => {
     if (caps.prefersReducedMotion || lowPower2DMode) return;
-    const container = pinSectionRef.current;
     const triggerEl = triggerTargetRef.current;
-    if (!container || !triggerEl) return;
+    if (!triggerEl) return;
 
     const ctx = gsap.context(() => {
       ScrollTrigger.create({
@@ -272,8 +320,6 @@ export function HeroExplodedSection({
         start: 'top top',
         end: 'bottom bottom',
         scrub: 0.55,
-        pin: isDesktop ? container : false,
-        anticipatePin: isDesktop ? 1 : 0,
         onUpdate: (self) => {
           setScrollProgress(self.progress);
         },
@@ -283,7 +329,7 @@ export function HeroExplodedSection({
     return () => {
       ctx.revert();
     };
-  }, [caps.prefersReducedMotion, lowPower2DMode, isDesktop]);
+  }, [caps.prefersReducedMotion, lowPower2DMode]);
 
   // Scene timeline computation:
   // Scene 1 (0.00 - 0.85s): Gravity Drop
@@ -482,12 +528,7 @@ export function HeroExplodedSection({
       ref={triggerTargetRef}
       className={`relative w-full bg-[#090B0F] pt-16 ${scrollDurationHeight}`}
     >
-      <div
-        ref={pinSectionRef}
-        className={`${
-          isDesktop ? 'relative min-h-[calc(100vh-4rem)]' : 'sticky top-16 min-h-[calc(100vh-4rem)]'
-        } flex w-full flex-col justify-between bg-engineering-grid`}
-      >
+      <div className="sticky top-16 min-h-[calc(100vh-4rem)] flex w-full flex-col justify-between bg-engineering-grid">
         {/* Main Hero Content Grid */}
         <div className="relative z-20 mx-auto w-full max-w-7xl flex-1 px-4 pt-2.5 pb-2 sm:px-6 lg:grid lg:grid-cols-12 lg:items-center lg:gap-6 lg:px-8 lg:py-0">
           {/* MOBILE HEADER COPY (shown above 3D iPhone on < lg) */}
@@ -661,6 +702,7 @@ export function HeroExplodedSection({
                   />
 
                   <CinematicHeroPhoneGroup
+                    groupRef={phoneGroupRef}
                     dropOffsetY={dropState.offsetY}
                     impactTiltX={dropState.tiltX}
                     impactTiltZ={dropState.tiltZ}
@@ -682,47 +724,12 @@ export function HeroExplodedSection({
                       reducedMotion={caps.prefersReducedMotion}
                     />
 
-                    {/* Desktop-only two-sided component labels when exploded */}
-                    {isDesktop &&
-                      showCallouts &&
-                      explosionFactor > 0.35 &&
-                      IPHONE_COMPONENTS.map((comp) => {
-                        const isFocused = highlightedIds.includes(comp.id);
-                        const xOffset = comp.side === 'right' ? 1.24 : -1.24;
-                        const yPos = comp.explodedY * explosionFactor;
-                        return (
-                          <Html
-                            key={comp.id}
-                            position={[xOffset, yPos, 0.08]}
-                            center
-                            distanceFactor={8}
-                            zIndexRange={[10, 0]}
-                          >
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSelectedPartId((prev) =>
-                                  prev === comp.id ? null : comp.id
-                                )
-                              }
-                              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
-                                comp.side === 'left' ? 'flex-row-reverse' : 'flex-row'
-                              } ${
-                                isFocused
-                                  ? 'border-blue-400 bg-blue-600/95 text-white shadow-lg'
-                                  : 'border-white/15 bg-[#0E121A]/90 text-slate-300 hover:border-blue-400/60 hover:text-white'
-                              }`}
-                            >
-                              <span
-                                className={`h-px w-4 ${
-                                  isFocused ? 'bg-blue-200' : 'bg-slate-500'
-                                }`}
-                              />
-                              <span>{comp.shortLabel}</span>
-                            </button>
-                          </Html>
-                        );
-                      })}
+                    <HeroCalloutProjector
+                      phoneGroupRef={phoneGroupRef}
+                      calloutRefs={calloutRefs}
+                      explosionFactor={explosionFactor}
+                      enabled={isDesktop && showCallouts && explosionFactor > 0.35}
+                    />
                   </CinematicHeroPhoneGroup>
 
                   <GroundContactShadow
@@ -743,6 +750,46 @@ export function HeroExplodedSection({
                   </div>
                 </div>
               )}
+
+              {/* Desktop-only projected 2D component callout overlay (no nested createRoot portals) */}
+              {!lowPower2DMode &&
+                caps.webglAvailable &&
+                isDesktop &&
+                showCallouts &&
+                explosionFactor > 0.35 && (
+                  <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+                    {IPHONE_COMPONENTS.map((comp) => {
+                      const isFocused = highlightedIds.includes(comp.id);
+                      return (
+                        <button
+                          key={comp.id}
+                          ref={(el) => {
+                            calloutRefs.current[comp.id] = el;
+                          }}
+                          type="button"
+                          onClick={() =>
+                            setSelectedPartId((prev) => (prev === comp.id ? null : comp.id))
+                          }
+                          style={{ opacity: 0, pointerEvents: 'none', left: 0, top: 0 }}
+                          className={`absolute flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
+                            comp.side === 'left' ? 'flex-row-reverse' : 'flex-row'
+                          } ${
+                            isFocused
+                              ? 'border-blue-400 bg-blue-600/95 text-white shadow-lg'
+                              : 'border-white/15 bg-[#0E121A]/90 text-slate-300 hover:border-blue-400/60 hover:text-white'
+                          }`}
+                        >
+                          <span
+                            className={`h-px w-4 ${
+                              isFocused ? 'bg-blue-200' : 'bg-slate-500'
+                            }`}
+                          />
+                          <span>{comp.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
               {/* 360° Exterior Angle Quick Selector (Front / Side / Back) */}
               {!lowPower2DMode && caps.webglAvailable && (
