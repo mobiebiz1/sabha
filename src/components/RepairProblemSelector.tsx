@@ -6,7 +6,11 @@ import {
   Phone,
   Wrench,
 } from 'lucide-react';
-import { buildTelHref, buildWhatsAppRepairUrl } from '../config/business';
+import {
+  buildTelHref,
+  buildWhatsAppRepairUrl,
+  normalizeDisplayPhone,
+} from '../config/business';
 import type { DeviceCategoryId, DeviceModelSpec } from '../data/devices';
 import { IPHONE_COMPONENTS } from '../data/componentsCatalog';
 import {
@@ -227,6 +231,7 @@ export function RepairProblemSelector({
     customNumber: contactWhatsapp,
   });
 
+  const displayPhone = normalizeDisplayPhone(contactPhone);
   const telHref = buildTelHref(contactPhone);
 
   const handleIssueCardClick = (issue: RepairCategorySpec) => {
@@ -502,6 +507,14 @@ export function RepairProblemSelector({
                       {activeContactIssue.title}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold uppercase tracking-wider text-slate-400">
+                      SERVICE DESK
+                    </span>
+                    <span className="font-mono font-semibold text-slate-200 text-right">
+                      {displayPhone}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mt-3.5 space-y-2.5">
@@ -521,18 +534,23 @@ export function RepairProblemSelector({
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     <a
                       href={telHref}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-[#151C2B] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:border-blue-400/60 hover:bg-[#1A2234] whitespace-nowrap"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-[#151C2B] px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-blue-400/60 hover:bg-[#1A2234] whitespace-nowrap"
                     >
-                      <Phone className="h-4 w-4 text-blue-400" />
-                      <span>CALL APPLEFIX</span>
+                      <Phone className="h-4 w-4 shrink-0 text-blue-400" />
+                      <span className="flex flex-col leading-tight text-left">
+                        <span>CALL APPLEFIX</span>
+                        <span className="font-mono text-[11px] font-medium text-blue-300">
+                          {displayPhone}
+                        </span>
+                      </span>
                     </a>
                     <a
                       href={whatsappUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#16A34A] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#15803D] whitespace-nowrap"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#16A34A] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#15803D] whitespace-nowrap"
                     >
-                      <MessageCircle className="h-4 w-4" />
+                      <MessageCircle className="h-4 w-4 shrink-0" />
                       <span>WHATSAPP APPLEFIX</span>
                     </a>
                   </div>

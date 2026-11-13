@@ -12,6 +12,7 @@ import {
   buildTelHref,
   buildWhatsAppRepairUrl,
   getStoredBusinessContact,
+  normalizeDisplayPhone,
   saveStoredBusinessContact,
 } from './config/business';
 import {
@@ -228,18 +229,28 @@ export default function App() {
       ? 'iPad'
       : 'Apple Watch';
 
-  const mobileStickyWhatsappUrl = buildWhatsAppRepairUrl({
-    device: deviceLabel,
-    model: activeModel.name,
-    issue: activeIssue.title,
+  const hasDeviceSelection = selectedCategory !== null;
+
+  const floatingWhatsappUrl = buildWhatsAppRepairUrl({
+    device: hasDeviceSelection ? deviceLabel : undefined,
+    model: hasDeviceSelection ? activeModel.name : undefined,
+    issue: hasDeviceSelection ? activeIssue.title : undefined,
     customNumber: contactConfig.whatsappNumber,
   });
 
+  const displayPhone = normalizeDisplayPhone(contactConfig.phoneDisplay);
   const mobileStickyTelHref = buildTelHref(contactConfig.phoneDisplay);
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#090B0F] pb-[4.25rem] text-[#E8ECF2] md:pb-0">
-      <Navbar onNavigate={scrollToSection} />
+      <Navbar
+        onNavigate={scrollToSection}
+        contactPhone={contactConfig.phoneDisplay}
+        contactWhatsapp={contactConfig.whatsappNumber}
+        selectedDevice={hasDeviceSelection ? deviceLabel : undefined}
+        selectedModel={hasDeviceSelection ? activeModel.name : undefined}
+        selectedIssue={hasDeviceSelection ? activeIssue.title : undefined}
+      />
 
       <main>
         <SceneErrorBoundary
@@ -293,6 +304,8 @@ export default function App() {
           selectedCategory={activeCategory}
           selectedModel={activeModel}
           selectedIssue={activeIssue}
+          contactPhone={contactConfig.phoneDisplay}
+          contactWhatsapp={contactConfig.whatsappNumber}
           lowPower2DMode={lowPower2DMode}
           onChangeIssue={() => scrollToSection('repair-problem-selector')}
           onProceedToBooking={() => scrollToSection('book-repair')}
@@ -311,7 +324,26 @@ export default function App() {
         />
       </main>
 
-      <Footer onNavigate={scrollToSection} />
+      <Footer
+        onNavigate={scrollToSection}
+        contactPhone={contactConfig.phoneDisplay}
+        contactWhatsapp={contactConfig.whatsappNumber}
+        selectedDevice={hasDeviceSelection ? deviceLabel : undefined}
+        selectedModel={hasDeviceSelection ? activeModel.name : undefined}
+        selectedIssue={hasDeviceSelection ? activeIssue.title : undefined}
+      />
+
+      {/* Desktop Floating WhatsApp Button (hidden on mobile where sticky bar handles both CTAs) */}
+      <a
+        href={floatingWhatsappUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="WhatsApp AppleFix Service Centre"
+        className="fixed bottom-6 right-6 z-40 hidden items-center gap-2 rounded-xl border border-emerald-400/35 bg-[#16A34A] px-4 py-3 text-xs font-semibold text-white shadow-[0_14px_32px_rgba(0,0,0,0.45)] transition-colors hover:bg-[#15803D] md:inline-flex"
+      >
+        <MessageCircle className="h-4 w-4" />
+        <span>WhatsApp AppleFix</span>
+      </a>
 
       {/* Mobile Non-Overlapping Sticky Contact Bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-[#0B0E14]/95 px-3 py-2.5 shadow-2xl md:hidden">
@@ -321,10 +353,10 @@ export default function App() {
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-[#151C2B] px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:border-blue-400/50 whitespace-nowrap"
           >
             <Phone className="h-3.5 w-3.5 text-blue-400" />
-            <span>Call AppleFix</span>
+            <span>Call {displayPhone}</span>
           </a>
           <a
-            href={mobileStickyWhatsappUrl}
+            href={floatingWhatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#16A34A] px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#15803D] whitespace-nowrap"

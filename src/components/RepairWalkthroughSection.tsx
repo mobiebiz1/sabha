@@ -10,8 +10,10 @@ import {
   Crosshair,
   Maximize,
   Maximize2,
+  MessageCircle,
   Minimize,
   Pause,
+  Phone,
   Play,
   RotateCcw,
   ShieldAlert,
@@ -21,6 +23,12 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
+import {
+  buildTelHref,
+  buildWhatsAppRepairUrl,
+  BUSINESS_CONFIG,
+  normalizeDisplayPhone,
+} from '../config/business';
 import type { DeviceCategoryId, DeviceModelSpec } from '../data/devices';
 import type { RepairAnimationPose, RepairCategorySpec, RepairToolType } from '../data/repairs';
 import {
@@ -54,6 +62,8 @@ interface RepairWalkthroughSectionProps {
   selectedCategory: DeviceCategoryId;
   selectedModel: DeviceModelSpec;
   selectedIssue: RepairCategorySpec;
+  contactPhone?: string;
+  contactWhatsapp?: string;
   lowPower2DMode: boolean;
   onChangeIssue: () => void;
   onProceedToBooking: () => void;
@@ -141,6 +151,8 @@ export function RepairWalkthroughSection({
   selectedCategory,
   selectedModel,
   selectedIssue,
+  contactPhone = BUSINESS_CONFIG.phoneDisplay,
+  contactWhatsapp = BUSINESS_CONFIG.whatsappNumber,
   lowPower2DMode,
   onChangeIssue,
   onProceedToBooking,
@@ -356,6 +368,14 @@ export function RepairWalkthroughSection({
   const issueTitleUpper = selectedIssue.title.toUpperCase();
   const activeCaptionText =
     narrationLang === 'en-IN' ? currentStep.narrationEn : currentStep.narrationHi;
+  const displayPhone = normalizeDisplayPhone(contactPhone);
+  const telHref = buildTelHref(contactPhone);
+  const whatsappUrl = buildWhatsAppRepairUrl({
+    device: categoryLabel,
+    model: selectedModel.name,
+    issue: selectedIssue.title,
+    customNumber: contactWhatsapp,
+  });
 
   const handleToggleFullscreen = async () => {
     const shellEl = viewportShellRef.current;
@@ -1176,6 +1196,26 @@ export function RepairWalkthroughSection({
                   );
                 })}
               </div>
+            </div>
+
+            {/* Direct Repair Consultation Buttons */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <a
+                href={telHref}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-[#151C2B] px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:border-blue-400/50 hover:bg-[#1A2234] whitespace-nowrap"
+              >
+                <Phone className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                <span>Call {displayPhone}</span>
+              </a>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#16A34A] px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#15803D] whitespace-nowrap"
+              >
+                <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>WhatsApp Fix</span>
+              </a>
             </div>
           </div>
         </div>

@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Copy, MessageCircle, Phone, Settings2 } from 'lucide-react';
-import { buildTelHref, buildWhatsAppRepairUrl, BUSINESS_CONFIG } from '../config/business';
+import {
+  buildTelHref,
+  buildWhatsAppRepairUrl,
+  BUSINESS_CONFIG,
+  normalizeDisplayPhone,
+} from '../config/business';
 import type { DeviceCategoryId, DeviceModelSpec } from '../data/devices';
 import type { RepairCategorySpec } from '../data/repairs';
 
@@ -41,11 +46,17 @@ export function BookingSection({
       ? 'iPad'
       : 'Apple Watch';
 
+  const displayPhone = normalizeDisplayPhone(contactPhone);
+
+  const ticketNotes = bookingConfirmed
+    ? `Ticket: ${ticketId} | Name: ${customerName || 'Guest'} | Slot: ${preferredSlot}${notes ? ` | ${notes}` : ''}`
+    : notes;
+
   const whatsappUrl = buildWhatsAppRepairUrl({
     device: deviceLabel,
     model: selectedModel.name,
     issue: selectedIssue.title,
-    notes,
+    notes: ticketNotes,
     customNumber: contactWhatsapp,
   });
 
@@ -149,7 +160,7 @@ export function BookingSection({
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-[#151A26] px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-blue-400/50 hover:bg-[#1A2130] whitespace-nowrap"
                 >
                   <Phone className="h-4 w-4 text-blue-400" />
-                  <span>Call AppleFix</span>
+                  <span>Call {displayPhone}</span>
                 </a>
               </div>
 
@@ -157,7 +168,7 @@ export function BookingSection({
               <div className="mt-4 border-t border-white/10 pt-4">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span>
-                    Service Desk: <span className="font-mono text-slate-200">{contactPhone}</span>
+                    Service Desk: <span className="font-mono text-slate-200">{displayPhone}</span>
                   </span>
                   <button
                     type="button"
