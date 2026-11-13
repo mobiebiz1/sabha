@@ -8,14 +8,33 @@ function createCanvas(w: number, h: number): [HTMLCanvasElement, CanvasRendering
   return [canvas, ctx];
 }
 
-export function createBrushedMetalRoughnessTexture(anisotropy = 4): THREE.CanvasTexture {
-  const [canvas, ctx] = createCanvas(256, 256);
+function createScaledCanvas(
+  baseW: number,
+  baseH: number,
+  resolutionScale = 1
+): [HTMLCanvasElement, CanvasRenderingContext2D] {
+  const s = Math.max(0.25, Math.min(1, resolutionScale));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(32, Math.round(baseW * s));
+  canvas.height = Math.max(32, Math.round(baseH * s));
+  const ctx = canvas.getContext('2d')!;
+  if (s !== 1) {
+    ctx.scale(s, s);
+  }
+  return [canvas, ctx];
+}
+
+export function createBrushedMetalRoughnessTexture(
+  anisotropy = 4,
+  resolutionScale = 1
+): THREE.CanvasTexture {
+  const [canvas, ctx] = createScaledCanvas(256, 256, resolutionScale);
   ctx.fillStyle = '#5a5a5a';
   ctx.fillRect(0, 0, 256, 256);
-  for (let y = 0; y < 256; y++) {
+  for (let y = 0; y < 256; y += 2) {
     const v = 72 + Math.floor(Math.sin(y * 0.9) * 12 + Math.random() * 22);
     ctx.fillStyle = `rgb(${v},${v},${v})`;
-    ctx.fillRect(0, y, 256, 1);
+    ctx.fillRect(0, y, 256, 2);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = THREE.RepeatWrapping;
@@ -25,8 +44,11 @@ export function createBrushedMetalRoughnessTexture(anisotropy = 4): THREE.Canvas
   return tex;
 }
 
-export function createOledDisplayTexture(anisotropy = 4): THREE.CanvasTexture {
-  const [canvas, ctx] = createCanvas(512, 1024);
+export function createOledDisplayTexture(
+  anisotropy = 4,
+  resolutionScale = 1
+): THREE.CanvasTexture {
+  const [canvas, ctx] = createScaledCanvas(512, 1024, resolutionScale);
 
   // Deep pure OLED black base
   ctx.fillStyle = '#010308';
@@ -133,8 +155,12 @@ export function createOledDisplayTexture(anisotropy = 4): THREE.CanvasTexture {
   return tex;
 }
 
-export function createBatteryTexture(state: 'old' | 'new' = 'new', anisotropy = 4): THREE.CanvasTexture {
-  const [canvas, ctx] = createCanvas(512, 768);
+export function createBatteryTexture(
+  state: 'old' | 'new' = 'new',
+  anisotropy = 4,
+  resolutionScale = 1
+): THREE.CanvasTexture {
+  const [canvas, ctx] = createScaledCanvas(512, 768, resolutionScale);
   ctx.fillStyle = state === 'old' ? '#1c1d22' : '#101318';
   ctx.fillRect(0, 0, 512, 768);
 
@@ -170,8 +196,11 @@ export function createBatteryTexture(state: 'old' | 'new' = 'new', anisotropy = 
   return tex;
 }
 
-export function createLogicBoardTexture(anisotropy = 4): THREE.CanvasTexture {
-  const [canvas, ctx] = createCanvas(512, 768);
+export function createLogicBoardTexture(
+  anisotropy = 4,
+  resolutionScale = 1
+): THREE.CanvasTexture {
+  const [canvas, ctx] = createScaledCanvas(512, 768, resolutionScale);
   ctx.fillStyle = '#0f1621';
   ctx.fillRect(0, 0, 512, 768);
 
@@ -337,8 +366,11 @@ export function createContactShadowTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-export function createCrackedGlassOverlayTexture(anisotropy = 4): THREE.CanvasTexture {
-  const [canvas, ctx] = createCanvas(512, 1024);
+export function createCrackedGlassOverlayTexture(
+  anisotropy = 4,
+  resolutionScale = 1
+): THREE.CanvasTexture {
+  const [canvas, ctx] = createScaledCanvas(512, 1024, resolutionScale);
   ctx.clearRect(0, 0, 512, 1024);
 
   // Impact epicenter near upper-right glass zone

@@ -1,21 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
 import { IPHONE_COMPONENTS, type IPhonePartId } from '../../data/componentsCatalog';
 import type { DeviceVisualVariant } from '../../data/devices';
 import type { RepairAnimationPose } from '../../data/repairs';
-import {
-  createAppleLogoGeometries,
-  createRoundedFrameShape,
-  createRoundedRectShape,
-} from '../AssetRegistry';
-import {
-  createBatteryTexture,
-  createBrushedMetalRoughnessTexture,
-  createCrackedGlassOverlayTexture,
-  createLogicBoardTexture,
-  createOledDisplayTexture,
-} from '../proceduralTextures';
+import { useIPhoneLodManager } from '../lodManager';
 import { RepairTools3D } from './RepairTools3D';
 
 export interface ExplodedIPhoneProps {
@@ -74,158 +63,7 @@ export function ExplodedIPhoneModel({
   const smdRef = useRef<THREE.InstancedMesh>(null);
   const grilleRef = useRef<THREE.InstancedMesh>(null);
 
-  const textures = useMemo(() => {
-    return {
-      brushed: createBrushedMetalRoughnessTexture(4),
-      oled: createOledDisplayTexture(4),
-      crack: createCrackedGlassOverlayTexture(4),
-      batteryOld: createBatteryTexture('old', 4),
-      batteryNew: createBatteryTexture('new', 4),
-      pcb: createLogicBoardTexture(4),
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      textures.brushed.dispose();
-      textures.oled.dispose();
-      textures.crack.dispose();
-      textures.batteryOld.dispose();
-      textures.batteryNew.dispose();
-      textures.pcb.dispose();
-    };
-  }, [textures]);
-
-  // Optimized multi-part precision extruded geometries
-  const geometries = useMemo(() => {
-    const bodyShape = createRoundedRectShape(PHONE_W, PHONE_H, PHONE_R);
-    const frameShape = createRoundedFrameShape(PHONE_W + 0.06, PHONE_H + 0.06, PHONE_R + 0.02, 0.085);
-    const midFrameShape = createRoundedFrameShape(PHONE_W - 0.04, PHONE_H - 0.04, PHONE_R - 0.02, 0.13);
-    const bezelShape = createRoundedFrameShape(PHONE_W - 0.02, PHONE_H - 0.02, PHONE_R - 0.01, 0.048);
-    const screenShape = createRoundedRectShape(PHONE_W - 0.06, PHONE_H - 0.06, PHONE_R - 0.025);
-    const plateauShape = createRoundedRectShape(1.4, 0.72, 0.16);
-    const squarePlateauShape = createRoundedRectShape(0.76, 0.76, 0.14);
-    const pillPlateauShape = createRoundedRectShape(0.36, 0.68, 0.16);
-    const batteryShape = createRoundedRectShape(0.84, 1.54, 0.06);
-    const boardShape = createRoundedRectShape(0.54, 1.8, 0.04);
-
-    const backGlassGeo = new THREE.ExtrudeGeometry(bodyShape, {
-      depth: 0.03,
-      bevelEnabled: true,
-      bevelThickness: 0.01,
-      bevelSize: 0.01,
-      bevelSegments: 2,
-      curveSegments: 10,
-    });
-    backGlassGeo.center();
-
-    const plateauGeo = new THREE.ExtrudeGeometry(plateauShape, {
-      depth: 0.035,
-      bevelEnabled: true,
-      bevelThickness: 0.012,
-      bevelSize: 0.012,
-      bevelSegments: 2,
-      curveSegments: 10,
-    });
-    plateauGeo.center();
-
-    const squarePlateauGeo = new THREE.ExtrudeGeometry(squarePlateauShape, {
-      depth: 0.035,
-      bevelEnabled: true,
-      bevelThickness: 0.012,
-      bevelSize: 0.012,
-      bevelSegments: 2,
-      curveSegments: 10,
-    });
-    squarePlateauGeo.center();
-
-    const pillPlateauGeo = new THREE.ExtrudeGeometry(pillPlateauShape, {
-      depth: 0.032,
-      bevelEnabled: true,
-      bevelThickness: 0.01,
-      bevelSize: 0.01,
-      bevelSegments: 2,
-      curveSegments: 10,
-    });
-    pillPlateauGeo.center();
-
-    const titaniumBandGeo = new THREE.ExtrudeGeometry(frameShape, {
-      depth: 0.22,
-      bevelEnabled: true,
-      bevelThickness: 0.016,
-      bevelSize: 0.014,
-      bevelSegments: 2,
-      curveSegments: 12,
-    });
-    titaniumBandGeo.center();
-
-    const middleFrameGeo = new THREE.ExtrudeGeometry(midFrameShape, {
-      depth: 0.085,
-      bevelEnabled: true,
-      bevelThickness: 0.008,
-      bevelSize: 0.008,
-      bevelSegments: 2,
-      curveSegments: 10,
-    });
-    middleFrameGeo.center();
-
-    const displayBezelGeo = new THREE.ExtrudeGeometry(bezelShape, {
-      depth: 0.036,
-      bevelEnabled: true,
-      bevelThickness: 0.006,
-      bevelSize: 0.006,
-      bevelSegments: 2,
-      curveSegments: 10,
-    });
-    displayBezelGeo.center();
-
-    const oledGeo = new THREE.ExtrudeGeometry(screenShape, {
-      depth: 0.026,
-      bevelEnabled: false,
-      curveSegments: 10,
-    });
-    oledGeo.center();
-
-    const batteryGeo = new THREE.ExtrudeGeometry(batteryShape, {
-      depth: 0.08,
-      bevelEnabled: true,
-      bevelThickness: 0.008,
-      bevelSize: 0.008,
-      bevelSegments: 2,
-      curveSegments: 8,
-    });
-    batteryGeo.center();
-
-    const boardGeo = new THREE.ExtrudeGeometry(boardShape, {
-      depth: 0.034,
-      bevelEnabled: false,
-      curveSegments: 6,
-    });
-    boardGeo.center();
-
-    const { logoBodyGeo, logoLeafGeo } = createAppleLogoGeometries(0.35);
-
-    return {
-      backGlassGeo,
-      plateauGeo,
-      squarePlateauGeo,
-      pillPlateauGeo,
-      titaniumBandGeo,
-      middleFrameGeo,
-      displayBezelGeo,
-      oledGeo,
-      batteryGeo,
-      boardGeo,
-      logoBodyGeo,
-      logoLeafGeo,
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      Object.values(geometries).forEach((g) => g.dispose());
-    };
-  }, [geometries]);
+  const { lodConfig, geometries, textures } = useIPhoneLodManager(rootRef, explosionFactor);
 
   // Populate InstancedMesh micro-screws, SMD chips, and bottom speaker/mic grille perforations
   useEffect(() => {
@@ -405,8 +243,10 @@ export function ExplodedIPhoneModel({
     if (el) partRefs.current[id] = el;
   };
 
-  const batteryTex = repairPose?.batteryState === 'old' ? textures.batteryOld : textures.batteryNew;
+  const batteryTex = repairPose?.batteryState === 'old' ? textures?.batteryOld : textures?.batteryNew;
   const hideInternalDetails = mode === 'exploded_stack' && explosionFactor < 0.03;
+  const minorCylSegs = Math.max(6, Math.floor(lodConfig.cylinderSegments * 0.5));
+  const detailCylSegs = Math.max(8, lodConfig.cylinderSegments - 4);
 
   return (
     <group ref={rootRef}>
@@ -418,12 +258,16 @@ export function ExplodedIPhoneModel({
         onPointerOut={handlePointerOut}
       >
         {/* Frosted Titanium / Ceramic Shield Back Glass */}
-        <mesh geometry={geometries.backGlassGeo} castShadow receiveShadow>
+        <mesh
+          geometry={geometries.backGlassGeo}
+          castShadow={lodConfig.castShadows}
+          receiveShadow={lodConfig.castShadows}
+        >
           <meshPhysicalMaterial
             color="#c7ccd5"
             roughness={0.34}
             metalness={0.26}
-            clearcoat={0.72}
+            clearcoat={lodConfig.enableClearcoat ? 0.72 : 0}
             clearcoatRoughness={0.18}
             emissive={getEmissive('back_glass')}
             emissiveIntensity={getEmissiveIntensity('back_glass')}
@@ -434,17 +278,17 @@ export function ExplodedIPhoneModel({
 
         {/* Flush PVD Metallic Apple Logo centered on rear Ceramic Shield glass */}
         <group
-          position={[0, visualVariant === 'iphone-se-classic' ? 0.22 : -0.02, -0.0245]}
+          position={[0, visualVariant === 'iphone-se-classic' ? 0.22 : -0.02, -0.0235]}
           rotation={[0, Math.PI, 0]}
         >
           <mesh geometry={geometries.logoBodyGeo}>
             <meshPhysicalMaterial
-              color="#2d3748"
-              metalness={0.92}
-              roughness={0.06}
-              clearcoat={1}
+              color="#334155"
+              metalness={0.94}
+              roughness={0.05}
+              clearcoat={lodConfig.enableClearcoat ? 1 : 0.35}
               clearcoatRoughness={0.02}
-              envMapIntensity={1.95}
+              envMapIntensity={2.05}
               polygonOffset
               polygonOffsetFactor={-2}
               polygonOffsetUnits={-2}
@@ -456,12 +300,12 @@ export function ExplodedIPhoneModel({
           </mesh>
           <mesh geometry={geometries.logoLeafGeo}>
             <meshPhysicalMaterial
-              color="#2d3748"
-              metalness={0.92}
-              roughness={0.06}
-              clearcoat={1}
+              color="#334155"
+              metalness={0.94}
+              roughness={0.05}
+              clearcoat={lodConfig.enableClearcoat ? 1 : 0.35}
               clearcoatRoughness={0.02}
-              envMapIntensity={1.95}
+              envMapIntensity={2.05}
               polygonOffset
               polygonOffsetFactor={-2}
               polygonOffsetUnits={-2}
@@ -539,7 +383,7 @@ export function ExplodedIPhoneModel({
                     color={chassisColorHex}
                     roughness={0.18}
                     metalness={0.68}
-                    clearcoat={0.92}
+                    clearcoat={lodConfig.enableClearcoat ? 0.92 : 0}
                     clearcoatRoughness={0.1}
                   />
                 </mesh>
@@ -548,20 +392,20 @@ export function ExplodedIPhoneModel({
               {lensCoords.map(([cx, cy], idx) => (
                 <group key={idx} position={[cx, cy, -0.068]} rotation={[Math.PI / 2, 0, 0]}>
                   <mesh>
-                    <cylinderGeometry args={[0.142, 0.148, 0.055, 24]} />
+                    <cylinderGeometry args={[0.142, 0.148, 0.055, lodConfig.cylinderSegments]} />
                     <meshStandardMaterial color={chassisColorHex} metalness={0.95} roughness={0.16} />
                   </mesh>
                   <mesh position={[0, -0.018, 0]}>
-                    <cylinderGeometry args={[0.115, 0.115, 0.025, 22]} />
+                    <cylinderGeometry args={[0.115, 0.115, 0.025, Math.max(8, lodConfig.cylinderSegments - 2)]} />
                     <meshStandardMaterial color="#090c12" metalness={0.4} roughness={0.5} />
                   </mesh>
                   <mesh position={[0, -0.026, 0]}>
-                    <cylinderGeometry args={[0.075, 0.075, 0.02, 20]} />
+                    <cylinderGeometry args={[0.075, 0.075, 0.02, detailCylSegs]} />
                     <meshPhysicalMaterial
                       color="#0f2966"
                       metalness={0.25}
                       roughness={0.04}
-                      clearcoat={1}
+                      clearcoat={lodConfig.enableClearcoat ? 1 : 0}
                       ior={1.77}
                     />
                   </mesh>
@@ -571,11 +415,11 @@ export function ExplodedIPhoneModel({
               {/* True Tone Quad-LED Flash */}
               <group position={flashPos} rotation={[Math.PI / 2, 0, 0]}>
                 <mesh>
-                  <cylinderGeometry args={[0.068, 0.068, 0.016, 18]} />
+                  <cylinderGeometry args={[0.068, 0.068, 0.016, detailCylSegs]} />
                   <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.2} />
                 </mesh>
                 <mesh position={[0, -0.008, 0]}>
-                  <cylinderGeometry args={[0.052, 0.052, 0.012, 18]} />
+                  <cylinderGeometry args={[0.052, 0.052, 0.012, detailCylSegs]} />
                   <meshStandardMaterial
                     color="#fde68a"
                     emissive="#f59e0b"
@@ -589,21 +433,28 @@ export function ExplodedIPhoneModel({
               {showLidar && (
                 <group position={lidarPos} rotation={[Math.PI / 2, 0, 0]}>
                   <mesh>
-                    <cylinderGeometry args={[0.072, 0.072, 0.016, 18]} />
+                    <cylinderGeometry args={[0.072, 0.072, 0.016, detailCylSegs]} />
                     <meshStandardMaterial color="#1e293b" metalness={0.75} roughness={0.25} />
                   </mesh>
                   <mesh position={[0, -0.009, 0]}>
-                    <cylinderGeometry args={[0.058, 0.058, 0.01, 18]} />
-                    <meshPhysicalMaterial color="#070a10" roughness={0.08} metalness={0.2} clearcoat={1} />
+                    <cylinderGeometry args={[0.058, 0.058, 0.01, detailCylSegs]} />
+                    <meshPhysicalMaterial
+                      color="#070a10"
+                      roughness={0.08}
+                      metalness={0.2}
+                      clearcoat={lodConfig.enableClearcoat ? 1 : 0}
+                    />
                   </mesh>
                 </group>
               )}
 
               {/* Rear Microphone Pinhole */}
-              <mesh position={[flashPos[0], flashPos[1] - 0.16, flashPos[2]]} rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[0.018, 0.018, 0.012, 12]} />
-                <meshStandardMaterial color="#05070b" roughness={0.7} />
-              </mesh>
+              {lodConfig.showSecondaryDetails && (
+                <mesh position={[flashPos[0], flashPos[1] - 0.16, flashPos[2]]} rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.018, 0.018, 0.012, minorCylSegs]} />
+                  <meshStandardMaterial color="#05070b" roughness={0.7} />
+                </mesh>
+              )}
             </>
           );
         })()}
@@ -671,12 +522,17 @@ export function ExplodedIPhoneModel({
         ).map(([cx, cy], idx) => (
           <group key={idx} position={[cx, cy, 0.01]} rotation={[Math.PI / 2, 0, 0]}>
             <mesh>
-              <cylinderGeometry args={[0.115, 0.115, 0.09, 20]} />
+              <cylinderGeometry args={[0.115, 0.115, 0.09, detailCylSegs]} />
               <meshStandardMaterial color="#1f2937" metalness={0.85} roughness={0.22} />
             </mesh>
             <mesh position={[0, 0.05, 0]}>
-              <cylinderGeometry args={[0.08, 0.08, 0.018, 20]} />
-              <meshPhysicalMaterial color="#1d4ed8" metalness={0.35} roughness={0.04} clearcoat={1} />
+              <cylinderGeometry args={[0.08, 0.08, 0.018, detailCylSegs]} />
+              <meshPhysicalMaterial
+                color="#1d4ed8"
+                metalness={0.35}
+                roughness={0.04}
+                clearcoat={lodConfig.enableClearcoat ? 1 : 0}
+              />
             </mesh>
           </group>
         ))}
@@ -728,7 +584,7 @@ export function ExplodedIPhoneModel({
             color="#cbd5e1"
             metalness={0.94}
             roughness={0.2}
-            roughnessMap={textures.brushed}
+            roughnessMap={textures?.brushed}
             anisotropy={0.7}
             emissive={getEmissive('shield_plate')}
             emissiveIntensity={getEmissiveIntensity('shield_plate')}
@@ -746,12 +602,12 @@ export function ExplodedIPhoneModel({
         onPointerOut={handlePointerOut}
       >
         {/* Outer precision anodized display bezel */}
-        <mesh geometry={geometries.displayBezelGeo} castShadow>
+        <mesh geometry={geometries.displayBezelGeo} castShadow={lodConfig.castShadows}>
           <meshPhysicalMaterial
             color="#0b0e14"
             metalness={0.45}
             roughness={0.14}
-            clearcoat={1}
+            clearcoat={lodConfig.enableClearcoat ? 1 : 0}
             clearcoatRoughness={0.06}
             emissive={getEmissive('display_panel')}
             emissiveIntensity={getEmissiveIntensity('display_panel') * 0.55}
@@ -769,13 +625,13 @@ export function ExplodedIPhoneModel({
         <mesh position={[0, 0, 0.015]}>
           <planeGeometry args={[PHONE_W - 0.12, PHONE_H - 0.12]} />
           <meshPhysicalMaterial
-            map={textures.oled}
+            map={textures?.oled}
             roughness={0.05}
             metalness={0.08}
-            clearcoat={1}
+            clearcoat={lodConfig.enableClearcoat ? 1 : 0}
             clearcoatRoughness={0.04}
             emissive="#1e40af"
-            emissiveMap={textures.oled}
+            emissiveMap={textures?.oled}
             emissiveIntensity={isPartFocused('display_panel') ? 1.15 : 0.72}
             transparent={hasAnyHighlight && !isPartFocused('display_panel')}
             opacity={getDimOpacity('display_panel')}
@@ -787,14 +643,14 @@ export function ExplodedIPhoneModel({
           <mesh position={[0, 0, 0.0175]}>
             <planeGeometry args={[PHONE_W - 0.12, PHONE_H - 0.12]} />
             <meshPhysicalMaterial
-              map={textures.crack}
+              map={textures?.crack}
               transparent
               depthWrite={false}
               polygonOffset
               polygonOffsetFactor={-2}
               roughness={0.08}
               metalness={0.18}
-              clearcoat={1}
+              clearcoat={lodConfig.enableClearcoat ? 1 : 0}
               opacity={THREE.MathUtils.clamp(crackIntensity, 0, 1) * getDimOpacity('display_panel')}
             />
           </mesh>
@@ -803,26 +659,39 @@ export function ExplodedIPhoneModel({
         {/* Physical Dynamic Island Pill + Selfie Lens + IR Dot Projector */}
         <group position={[0, 1.44, 0.019]}>
           <mesh rotation={[0, 0, Math.PI / 2]}>
-            <capsuleGeometry args={[0.052, 0.28, 6, 12]} />
+            <capsuleGeometry
+              args={[0.052, 0.28, Math.max(3, Math.floor(lodConfig.capsuleSegs * 0.5)), lodConfig.capsuleSegs]}
+            />
             <meshStandardMaterial color="#020306" roughness={0.15} metalness={0.2} />
           </mesh>
-          {/* Front Camera Optical Lens */}
-          <mesh position={[0.11, 0, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.032, 0.032, 0.008, 16]} />
-            <meshPhysicalMaterial color="#1d4ed8" metalness={0.35} roughness={0.05} clearcoat={1} />
-          </mesh>
-          {/* IR Flood Illuminator */}
-          <mesh position={[-0.09, 0, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.025, 0.025, 0.006, 14]} />
-            <meshStandardMaterial color="#1e1b4b" roughness={0.2} />
-          </mesh>
+          {lodConfig.showSecondaryDetails && (
+            <>
+              {/* Front Camera Optical Lens */}
+              <mesh position={[0.11, 0, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.032, 0.032, 0.008, detailCylSegs]} />
+                <meshPhysicalMaterial
+                  color="#1d4ed8"
+                  metalness={0.35}
+                  roughness={0.05}
+                  clearcoat={lodConfig.enableClearcoat ? 1 : 0}
+                />
+              </mesh>
+              {/* IR Flood Illuminator */}
+              <mesh position={[-0.09, 0, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.025, 0.025, 0.006, minorCylSegs]} />
+                <meshStandardMaterial color="#1e1b4b" roughness={0.2} />
+              </mesh>
+            </>
+          )}
         </group>
 
         {/* Top Micro Earpiece Slit */}
-        <mesh position={[0, 1.615, 0.019]}>
-          <boxGeometry args={[0.26, 0.016, 0.006]} />
-          <meshStandardMaterial color="#1e2430" roughness={0.6} />
-        </mesh>
+        {lodConfig.showSecondaryDetails && (
+          <mesh position={[0, 1.615, 0.019]}>
+            <boxGeometry args={[0.26, 0.016, 0.006]} />
+            <meshStandardMaterial color="#1e2430" roughness={0.6} />
+          </mesh>
+        )}
       </group>
 
       {/* 6. DISPLAY FLEX & CONNECTORS */}
@@ -862,7 +731,7 @@ export function ExplodedIPhoneModel({
         onPointerOut={handlePointerOut}
       >
         <group position={[-0.24, -0.18, 0]}>
-          <mesh geometry={geometries.batteryGeo} castShadow>
+          <mesh geometry={geometries.batteryGeo} castShadow={lodConfig.castShadows}>
             <meshStandardMaterial
               map={batteryTex}
               roughness={0.48}
@@ -877,14 +746,18 @@ export function ExplodedIPhoneModel({
             <boxGeometry args={[0.76, 0.08, 0.036]} />
             <meshStandardMaterial color="#1e293b" metalness={0.6} roughness={0.35} />
           </mesh>
-          <mesh position={[-0.24, -0.8, -0.02]}>
-            <boxGeometry args={[0.16, 0.1, 0.01]} />
-            <meshStandardMaterial color="#e2e8f0" roughness={0.6} />
-          </mesh>
-          <mesh position={[0.24, -0.8, -0.02]}>
-            <boxGeometry args={[0.16, 0.1, 0.01]} />
-            <meshStandardMaterial color="#e2e8f0" roughness={0.6} />
-          </mesh>
+          {lodConfig.showSecondaryDetails && (
+            <>
+              <mesh position={[-0.24, -0.8, -0.02]}>
+                <boxGeometry args={[0.16, 0.1, 0.01]} />
+                <meshStandardMaterial color="#e2e8f0" roughness={0.6} />
+              </mesh>
+              <mesh position={[0.24, -0.8, -0.02]}>
+                <boxGeometry args={[0.16, 0.1, 0.01]} />
+                <meshStandardMaterial color="#e2e8f0" roughness={0.6} />
+              </mesh>
+            </>
+          )}
         </group>
       </group>
 
@@ -897,9 +770,9 @@ export function ExplodedIPhoneModel({
         onPointerOut={handlePointerOut}
       >
         <group position={[0.42, 0.25, 0]}>
-          <mesh geometry={geometries.boardGeo} castShadow>
+          <mesh geometry={geometries.boardGeo} castShadow={lodConfig.castShadows}>
             <meshStandardMaterial
-              map={textures.pcb}
+              map={textures?.pcb}
               roughness={0.38}
               metalness={0.55}
               emissive={getEmissive('logic_board')}
@@ -908,7 +781,11 @@ export function ExplodedIPhoneModel({
               opacity={getDimOpacity('logic_board')}
             />
           </mesh>
-          <instancedMesh ref={smdRef} args={[undefined, undefined, 36]}>
+          <instancedMesh
+            ref={smdRef}
+            args={[undefined, undefined, 36]}
+            visible={lodConfig.showMicroFasteners}
+          >
             <boxGeometry args={[0.075, 0.095, 0.02]} />
             <meshStandardMaterial color="#d4af37" metalness={0.9} roughness={0.22} />
           </instancedMesh>
@@ -924,7 +801,7 @@ export function ExplodedIPhoneModel({
         onPointerOut={handlePointerOut}
       >
         <group position={[-0.22, -1.16, 0]}>
-          <mesh castShadow>
+          <mesh castShadow={lodConfig.castShadows}>
             <boxGeometry args={[0.76, 0.24, 0.075]} />
             <meshStandardMaterial
               color="#1f2937"
@@ -937,7 +814,7 @@ export function ExplodedIPhoneModel({
             />
           </mesh>
           <mesh position={[0, 0, 0.042]}>
-            <cylinderGeometry args={[0.085, 0.085, 0.012, 20]} />
+            <cylinderGeometry args={[0.085, 0.085, 0.012, detailCylSegs]} />
             <meshStandardMaterial color="#b45309" metalness={0.9} roughness={0.2} />
           </mesh>
         </group>
@@ -973,12 +850,16 @@ export function ExplodedIPhoneModel({
         onPointerOver={handlePointerOver('middle_frame')}
         onPointerOut={handlePointerOut}
       >
-        <mesh geometry={geometries.middleFrameGeo} castShadow receiveShadow>
+        <mesh
+          geometry={geometries.middleFrameGeo}
+          castShadow={lodConfig.castShadows}
+          receiveShadow={lodConfig.castShadows}
+        >
           <meshPhysicalMaterial
             color="#94a3b8"
             metalness={0.92}
             roughness={0.25}
-            roughnessMap={textures.brushed}
+            roughnessMap={textures?.brushed}
             anisotropy={0.75}
             emissive={getEmissive('middle_frame')}
             emissiveIntensity={getEmissiveIntensity('middle_frame')}
@@ -987,11 +868,17 @@ export function ExplodedIPhoneModel({
           />
         </mesh>
         <mesh position={[0, 0.05, -0.015]}>
-          <torusGeometry args={[0.46, 0.028, 10, 36]} />
+          <torusGeometry
+            args={[0.46, 0.028, lodConfig.torusRadialSegments, lodConfig.torusTubularSegments]}
+          />
           <meshStandardMaterial color="#b45309" metalness={0.88} roughness={0.22} />
         </mesh>
-        <instancedMesh ref={screwsRef} args={[undefined, undefined, 22]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.018, 8]} />
+        <instancedMesh
+          ref={screwsRef}
+          args={[undefined, undefined, 22]}
+          visible={lodConfig.showMicroFasteners}
+        >
+          <cylinderGeometry args={[0.02, 0.02, 0.018, minorCylSegs]} />
           <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.15} />
         </instancedMesh>
       </group>
@@ -1079,14 +966,18 @@ export function ExplodedIPhoneModel({
         onPointerOver={handlePointerOver('titanium_frame')}
         onPointerOut={handlePointerOut}
       >
-        <mesh geometry={geometries.titaniumBandGeo} castShadow receiveShadow>
+        <mesh
+          geometry={geometries.titaniumBandGeo}
+          castShadow={lodConfig.castShadows}
+          receiveShadow={lodConfig.castShadows}
+        >
           <meshPhysicalMaterial
             color={chassisColorHex}
             metalness={0.96}
             roughness={0.2}
-            roughnessMap={textures.brushed}
+            roughnessMap={textures?.brushed}
             anisotropy={0.85}
-            clearcoat={0.28}
+            clearcoat={lodConfig.enableClearcoat ? 0.28 : 0}
             emissive={getEmissive('titanium_frame')}
             emissiveIntensity={getEmissiveIntensity('titanium_frame')}
             transparent={hasAnyHighlight && !isPartFocused('titanium_frame')}
@@ -1105,7 +996,12 @@ export function ExplodedIPhoneModel({
           visualVariant === 'iphone-17-air') && (
           <mesh position={[0.85, -0.55, 0]}>
             <boxGeometry args={[0.022, 0.28, 0.068]} />
-            <meshPhysicalMaterial color="#1e293b" metalness={0.45} roughness={0.1} clearcoat={1} />
+            <meshPhysicalMaterial
+              color="#1e293b"
+              metalness={0.45}
+              roughness={0.1}
+              clearcoat={lodConfig.enableClearcoat ? 1 : 0}
+            />
           </mesh>
         )}
 
@@ -1124,26 +1020,30 @@ export function ExplodedIPhoneModel({
         </mesh>
 
         {/* Dielectric Antenna Bands around titanium perimeter */}
-        {[
-          [-0.84, 1.25],
-          [-0.84, -1.25],
-          [0.84, 1.25],
-          [0.84, -1.25],
-        ].map(([ax, ay], i) => (
-          <mesh key={i} position={[ax, ay, 0]}>
-            <boxGeometry args={[0.038, 0.04, 0.23]} />
-            <meshStandardMaterial color="#475569" roughness={0.65} metalness={0.1} />
-          </mesh>
-        ))}
-        {/* Top & bottom antenna seams */}
-        <mesh position={[0.42, 1.7, 0]}>
-          <boxGeometry args={[0.04, 0.04, 0.23]} />
-          <meshStandardMaterial color="#475569" roughness={0.65} metalness={0.1} />
-        </mesh>
-        <mesh position={[-0.42, -1.7, 0]}>
-          <boxGeometry args={[0.04, 0.04, 0.23]} />
-          <meshStandardMaterial color="#475569" roughness={0.65} metalness={0.1} />
-        </mesh>
+        {lodConfig.showSecondaryDetails && (
+          <>
+            {[
+              [-0.84, 1.25],
+              [-0.84, -1.25],
+              [0.84, 1.25],
+              [0.84, -1.25],
+            ].map(([ax, ay], i) => (
+              <mesh key={i} position={[ax, ay, 0]}>
+                <boxGeometry args={[0.038, 0.04, 0.23]} />
+                <meshStandardMaterial color="#475569" roughness={0.65} metalness={0.1} />
+              </mesh>
+            ))}
+            {/* Top & bottom antenna seams */}
+            <mesh position={[0.42, 1.7, 0]}>
+              <boxGeometry args={[0.04, 0.04, 0.23]} />
+              <meshStandardMaterial color="#475569" roughness={0.65} metalness={0.1} />
+            </mesh>
+            <mesh position={[-0.42, -1.7, 0]}>
+              <boxGeometry args={[0.04, 0.04, 0.23]} />
+              <meshStandardMaterial color="#475569" roughness={0.65} metalness={0.1} />
+            </mesh>
+          </>
+        )}
 
         {/* Bottom Edge: Recessed USB-C Port + Pentalobe Screws + Instanced Speaker/Mic Grilles */}
         <group position={[0, -1.7, 0]}>
@@ -1152,23 +1052,33 @@ export function ExplodedIPhoneModel({
             <meshStandardMaterial color="#05070b" roughness={0.4} metalness={0.3} />
           </mesh>
           {/* USB-C internal contact tongue */}
-          <mesh position={[0, 0.004, 0]}>
-            <boxGeometry args={[0.18, 0.018, 0.022]} />
-            <meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.25} />
-          </mesh>
+          {lodConfig.showSecondaryDetails && (
+            <mesh position={[0, 0.004, 0]}>
+              <boxGeometry args={[0.18, 0.018, 0.022]} />
+              <meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.25} />
+            </mesh>
+          )}
           {/* Bottom Pentalobe Screws */}
-          <mesh position={[-0.19, 0, 0]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.02, 10]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
-          </mesh>
-          <mesh position={[0.19, 0, 0]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.02, 10]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
-          </mesh>
+          {lodConfig.showMicroFasteners && (
+            <>
+              <mesh position={[-0.19, 0, 0]}>
+                <cylinderGeometry args={[0.016, 0.016, 0.02, minorCylSegs]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+              </mesh>
+              <mesh position={[0.19, 0, 0]}>
+                <cylinderGeometry args={[0.016, 0.016, 0.02, minorCylSegs]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+              </mesh>
+            </>
+          )}
         </group>
 
-        <instancedMesh ref={grilleRef} args={[undefined, undefined, 10]}>
-          <cylinderGeometry args={[0.016, 0.016, 0.03, 10]} />
+        <instancedMesh
+          ref={grilleRef}
+          args={[undefined, undefined, 10]}
+          visible={lodConfig.showMicroFasteners}
+        >
+          <cylinderGeometry args={[0.016, 0.016, 0.03, minorCylSegs]} />
           <meshStandardMaterial color="#05070b" roughness={0.6} />
         </instancedMesh>
       </group>

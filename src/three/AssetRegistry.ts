@@ -98,7 +98,11 @@ export function createRoundedFrameShape(
  * Generates geometrically accurate 3D beveled Apple logo body & leaf geometries.
  * Centered horizontally at x = 0 with total height ~ 1.13 * scale and width ~ 0.98 * scale.
  */
-export function createAppleLogoGeometries(scale = 0.36): {
+export function createAppleLogoGeometries(
+  scale = 0.36,
+  curveSegments = 24,
+  bevelSegments = 2
+): {
   logoBodyGeo: THREE.ExtrudeGeometry;
   logoLeafGeo: THREE.ExtrudeGeometry;
 } {
@@ -129,12 +133,12 @@ export function createAppleLogoGeometries(scale = 0.36): {
   leaf.bezierCurveTo(0.09, 0.565, -0.02, 0.455, -0.01, 0.295);
 
   const extrudeOptions: THREE.ExtrudeGeometryOptions = {
-    depth: 0.004,
-    bevelEnabled: true,
-    bevelThickness: 0.0014,
-    bevelSize: 0.0014,
-    bevelSegments: 2,
-    curveSegments: 24,
+    depth: 0.003,
+    bevelEnabled: bevelSegments > 0,
+    bevelThickness: 0.001,
+    bevelSize: 0.0012,
+    bevelSegments,
+    curveSegments,
   };
 
   const logoBodyGeo = new THREE.ExtrudeGeometry(body, extrudeOptions);
